@@ -2,6 +2,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 public class main extends Sokoban {
@@ -14,7 +15,9 @@ public class main extends Sokoban {
         sokoban[4] = "#..$..#".toCharArray();
         sokoban[5] = "#.....#".toCharArray();
         sokoban[6] = "#######".toCharArray();
-        System.out.println(findPlayer(sokoban));
+
+        System.out.println("Sokoban Game: ");
+        System.out.println(findPlayer(sokoban) + " Player Coordinates" + "\n");
         sokobanToString(sokoban);
         move(sokoban, "north");
         move(sokoban, "east");
@@ -29,6 +32,8 @@ public class main extends Sokoban {
         move(sokoban,"west");
 
         /* LocalDate Uebungen */
+
+        System.out.println("LocalDate Uebungen: ");
 
         LocalDate time = LocalDate.now();
         System.out.println(time);                                      // Aktuelle Datum
@@ -46,9 +51,11 @@ public class main extends Sokoban {
         System.out.println(timeWeek4);
 
         DayOfWeek timeWeek1M = time1M.getDayOfWeek();                  // Wochentag vor einem Monat
-        System.out.println(timeWeek1M);
+        System.out.println(timeWeek1M + "\n");
 
         /* Java Collections API */
+
+        System.out.println("Java Collections API: ");
 
         List pairList = new ArrayList<Pair>();
 
@@ -69,9 +76,16 @@ public class main extends Sokoban {
         pairList.add(6,pair7);
 
         Collections.sort(pairList);
-        System.out.println(pairList);
+        System.out.println(pairList + "\n");
 
-
+        HashSet<Pair> pairs =new HashSet<Pair>();
+        for(int i = 0; i < pairList.size(); i++){
+            if(pairs.contains(pairList.get(i))) {
+                System.out.println(pairList.get(i));
+            }
+            pairs.add((Pair) pairList.get(i));
+        }
+        System.out.println("\n" + pairs);
     }
 
 
