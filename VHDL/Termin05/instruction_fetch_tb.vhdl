@@ -92,62 +92,64 @@ begin
   my_instruction_fetch : instruction_fetch port map(jumpdest, do_jump, cpuclk, pc, ir);
 
   process
-    variable expectiridx, expectpc, sync : integer;
   begin
-    cpuclk <= '0'; do_jump <= '0'; wait for 1 fs;
+    do_jump <= '0'; wait for 1 fs;
+    cpuclk <= '1'; wait for 1 fs;
+    cpuclk <= '0'; wait for 1 fs;
+    
+    --Sync
+    while ir = x"00000013" loop
+    	cpuclk <= '1'; wait for 1 fs; cpuclk <= '0'; wait for 1 fs;
+    end loop;
+    
+    assert ir = x"12300093" report "IR falsch" severity failure;
+    assert pc = x"00000000" report "PC falsch" severity failure;
+    
+    
+    --7 clk zyklen
+    for i in 0 to 6 loop
+    	cpuclk <= '1'; wait for 1 fs; cpuclk <= '0'; wait for 1 fs;
+    	assert ir = x"00000013" report "IR falsch" severity failure;
+    	assert pc = x"00000004" report "PC falsch" severity failure;
+    end loop;
+    
+    cpuclk <= '1'; wait for 1 fs; cpuclk <= '0'; wait for 1 fs;
+    
+    assert ir = x"0ff00113" report "IR falsch" severity failure;
+    assert pc = x"00000004" report "Pc falsch" severity failure;
+   
+   --7 clk zyklen
+    for j in 0 to 6 loop
+    	cpuclk <= '1'; wait for 1 fs; cpuclk <= '0'; wait for 1 fs;
+    	assert ir = x"00000013" report "IR falsch" severity failure;
+    	assert pc = x"00000008" report "PC falsch" severity failure;
+    end loop;
+    
+    cpuclk <= '1'; wait for 1 fs; cpuclk <= '0'; wait for 1 fs;
+    
+    assert ir = x"002081b3" report "IR falsch" severity failure;
+    assert pc = x"00000008" report "Pc falsch" severity failure;
+    
+    --Sprung
+    do_jump <= '1';
+    jumpdest <= x"00000004";
+    
+    for g in 0 to 6 loop
+    	cpuclk <= '1'; wait for 1 fs; cpuclk <= '0'; wait for 1 fs;
+    	assert ir = x"00000013" report "IR falsch" severity failure;
+    end loop;
+    
+    cpuclk <= '1'; wait for 1 fs; cpuclk <= '0'; wait for 1 fs;
+    
+    assert ir = x"0ff00113" report "IR falsch" severity failure;
+    assert pc = jumpdest report "Pc falsch" severity failure;
 
-    expectpc := 0; expectiridx := 0;
-    report "waiting for instruction at pc=" & integer'image(expectpc);
-    sync := 110;
-    while true/=false loop
-      cpuclk <= '1'; wait for 1 fs; cpuclk<= '0'; wait for 1 fs;
-			  do_jump <= '0'; -- stop jumping again (only required in case we forced a jump)
-
-      --report "Got ir=" & integer'image(to_integer(unsigned(ir))) & " at pc=" & integer'image(to_integer(unsigned(pc)));
-      if ir /= x"00000013" then -- not NOP
-	report "got ir=" & integer'image(to_integer(unsigned(ir))) &
-                      " at pc=" & integer'image(to_integer(unsigned(pc)));
-        if ir /= rom(expectiridx)  or  to_integer(unsigned(pc)) /= expectpc then
-          report "expected ir=" & integer'image(to_integer(unsigned(rom(expectiridx)))) & " at pc=" & integer'image(expectpc) &
-                  ", but got ir=" & integer'image(to_integer(unsigned(ir))) &
-                      " at pc=" & integer'image(to_integer(unsigned(pc))) severity failure;
-        end if;
-        if sync<100 and sync/=3 then
-          report "expecting a new instruction every 8 clocks" severity failure;
-        end if;
-        expectiridx := expectiridx + 1;
-        expectpc := expectpc + 4;
-        if expectpc=24 then
     report "instruction_fetch_tb finished - test OK";
     wait;
-        end if;
-        sync := 10;
-        --report "now waiting for instruction at pc=" & integer'image(expectpc);
-
-      else
-        --report "got nop";
-        if to_integer(unsigned(pc)) /= expectpc then
-          report " ==> but pc should be " & integer'image(expectpc) &
-                 " instead of " & integer'image(to_integer(unsigned(pc))) severity failure;
-        end if;
-        if sync=100 then
-          report "No instruction after 10 initial clocks?!?" severity failure;
-        elsif sync=0 then
-          report "No new instruction for 10 clocks?!?" severity failure;
-        end if;
-        sync := sync - 1;
-			    if expectpc=12 and sync=7 then  -- force a jump to 16
-			      report "forcing jump to 16";
-			      jumpdest <= x"00000010";
-			      do_jump <= '1';
-      cpuclk <= '1'; wait for 1 fs; cpuclk<= '0'; wait for 1 fs;
-      cpuclk <= '1'; wait for 1 fs; cpuclk<= '0'; wait for 1 fs;
-      sync := sync - 2;
-          expectpc:=16;
-          expectiridx:=expectiridx+1;
-			    end if;
-      end if;
-    end loop;
 
   end process;
 end architecture;
+
+
+
+

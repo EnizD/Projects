@@ -20,10 +20,6 @@ architecture behav of instruction_fetch is
     d_out : out std_logic_vector((width-1) downto 0)
   ); end component;
 
-  signal real_pc, pc_plus_4, pc_plus_4_or_0, pc_in, ir_in : std_logic_vector(31 downto 0);
-  signal use_nop : std_logic := '1';
-  signal count : std_logic_vector(2 downto 0) := "001";
-
   type rom_type is array (0 to 255) of std_logic_vector(31 downto 0);
   signal rom : rom_type := (
                    -- main:
@@ -50,7 +46,7 @@ architecture behav of instruction_fetch is
     x"005277b3",   --   and	x15,x4,x5    ; 0x111
                    -- 
                    -- ; test all arith/log literal instructions, results should be:
-    x"55506213",   --   ori	x4,zero,0x555     ; 0x555
+    x"55506213",   --   ori	x4,zero,0x clocks?!?555     ; 0x555
     x"fff20813",   --   addi	x16,x4,0xffffffff ; 0x554
     x"12322893",   --   slti	x17,x4,0x123      ; 0
     x"80023913",   --   sltiu	x18,x4,0xfffff800 ; 1
@@ -94,32 +90,40 @@ architecture behav of instruction_fetch is
     x"04200093",   --   addi	x1,zero,0x42    ; 0x42 special value: stop simulation
   others=>x"00000000");
 
+signal r_pc, pc_4, pc_4_0, pc_in, ir_in : std_logic_vector (31 downto 0);
+signal nop : std_logic := '1';
+signal zaehler : std_logic_vector(2 downto 0) := "001";
+
 begin
-  pc_plus_4 <= std_logic_vector(unsigned(real_pc) + 4);
-  pc_plus_4_or_0 <= real_pc when use_nop='1' else pc_plus_4;
-  pc_in <= jumpdest when do_jump='1' else pc_plus_4_or_0;
-  the_pc: d_reg generic map(32) port map(pc_in, cpuclk, real_pc);
-  pc_12: d_reg generic map(32) port map(real_pc, cpuclk, pc);
-
-  ir_in <= x"00000013" when use_nop='1'
-      else rom(to_integer(unsigned(real_pc(10 downto 2))));
-  ir_12: d_reg generic map(32) port map(ir_in, cpuclk, ir);
-
-  process (cpuclk)
-  begin
-    if falling_edge(cpuclk) then
-      use_nop <= '1';
-      case count is
-        when "000" => count <= "001";
-        when "001" => count <= "010";
-        when "010" => count <= "011";
-        when "011" => count <= "100";
-        when "100" => count <= "101";
-        when "101" => count <= "110"; use_nop <= '0';
-        when "110" => count <= "111";
-        when "111" => count <= "000";
-        when others =>
-      end case;
-    end if;
-  end process;
+pc_4 <= std_logic_vector(unsigned(r_pc) + 4);
+pc_4_0 <= r_pc when nop = '1' else pc_4;
+pc_in <= jumpdest when do_jump = '1' else pc_4_0;
+der_pc: d_reg generic map(32) port map(pc_in, cpuclk, r_pc);
+der_pc2: d_reg generic map(32) port map(r_pc, cpuclk, pc);
+-- NOP add x0, x0, x0
+--ir(31 downto 25) <= "0000000" when nop = '1'; -- Hardcode
+--ir(24 downto 20) <= "00000" when nop = '1'; -- x0 rs2
+--ir(19 downto 15) <= "00000" when nop = '1'; -- x0 rs1
+--ir(14 downto 12) <= "000" when nop = '1'; -- Hardcore
+--ir(11 downto 7) <= "00000" when nop = '1'; -- x0 rd
+--ir(6 downto 0) <= "0110011" when nop = '1'; -- Opcode add
+ir_in <= x"00000013" when nop = '1' else rom(to_integer(unsigned(r_pc))/4);
+ir2: d_reg generic map(32) port map(ir_in, cpuclk, ir);
+	process (cpuclk)
+	begin
+		if falling_edge(cpuclk) then
+			nop <= '1';
+			case zaehler is
+				when "000" => zaehler <= "001";
+				when "001" => zaehler <= "010"; 
+				when "010" => zaehler <= "011";  
+				when "011" => zaehler <= "100"; nop <= '0';
+				when "100" => zaehler <= "101";
+				when "101" => zaehler <= "110";
+				when "110" => zaehler <= "111";
+				when "111" => zaehler <= "000";
+				when others =>
+			end case;			
+		end if;
+	end process;
 end architecture;
